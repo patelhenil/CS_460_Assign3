@@ -12,6 +12,7 @@ import random
 import math
 import bisect
 from util import *
+import time
 
 from draw import Maze
 
@@ -33,20 +34,36 @@ ROBOT_HAS_COMPASS = True # Does the robot know where north is? If so, it
 ranges = []
 headings = []
 
+start = []
+
+resolution = 4
+headingCount = 0
+
+trajectoryName = "trajectories_2.txt"
 
 def getHeading():
     headings = []
-    with open("trajectories_2.txt") as f:
+    with open(trajectoryName) as f:
         for line in f:
             if line[:7] == "Heading":
                 headings.append(line[15:-2])
     return headings
 
+def getStart():
+    pair = []
+    with open(trajectoryName) as f:
+        for line in f:
+            if line[:3] == "  x":
+                pair.append(float(line[5:-1]))
+            if line[:3] == "  y":
+                pair.append(float(line[5:-1]))
+    return pair
+
 def getRanges():
     ranges = []
     rangesStrArr = []
     
-    with open("trajectories_2.txt") as f:
+    with open(trajectoryName) as f:
         for line in f:
             if line[:8] == "  ranges":
                 rangesStrArr.append(line[11:-2])
@@ -60,7 +77,7 @@ def getRanges():
 def getRFID():
     linesFromFile = []
     
-    resolution = 4
+    
     filled = 1
     empty = 0
     
@@ -88,8 +105,6 @@ def getRFID():
         
         x = x + 1
     
-    start = [2,3]
-    
     a = matrixCornersArr[0].split(',')
     b = matrixCornersArr[1].split(',')
     c = matrixCornersArr[2].split(',')
@@ -113,13 +128,11 @@ def getRFID():
                 point[0] = point[1]
                 point[1] = temp
     
-    
     start[0] = float(start[0]) + offset_x
     start[1] = float(start[1]) + offset_y
     start[0] = start[0] * resolution
     start[1] = start[1] * resolution
-    
-    
+
     matrixHeight = abs(float(a[1]) - float(b[1]))
     matrixWidth = abs(float(a[0]) - float(d[0]))
     
@@ -281,14 +294,18 @@ class Particle(object):
 # ------------------------------------------------------------------------
 class Robot(Particle):
     speed = 0.2
-
+    
+    headingCount = 0
+    
     def __init__(self, maze):
-        super(Robot, self).__init__(*maze.random_free_place(), heading=90)
+        #super(Robot, self).__init__(*maze.random_free_place(), heading=90)
+        super(Robot, self).__init__(*start, heading=90)
         self.chose_random_direction()
         self.step_count = 0
 
     def chose_random_direction(self):
-        heading = random.uniform(0, 360)
+        heading = math.degrees(float(headings[self.headingCount]))
+        self.headingCount = self.headingCount + 1
         self.h = heading
 
     def read_sensor(self, maze):
@@ -303,18 +320,22 @@ class Robot(Particle):
         """
         Move the robot. Note that the movement is stochastic too.
         """
-        while True:
+        '''while True:
             self.step_count += 1
             if self.advance_by(self.speed, noisy=True,
                 checker=lambda r, dx, dy: maze.is_free(r.x+dx, r.y+dy)):
                 break
             # Bumped into something or too long in same direction,
             # chose random new direction
-            self.chose_random_direction()
+            self.chose_random_direction()'''
+        self.step_count += 1
+        self.chose_random_direction()
+            
 
 # ------------------------------------------------------------------------
-
+start = getStart()
 maze_data = getRFID()
+
 
 headings = getHeading()
 
@@ -328,7 +349,7 @@ world.draw()
 particles = Particle.create_random(PARTICLE_COUNT, world)
 robbie = Robot(world)
 
-while True:
+while robbie.headingCount < len(headings):
     # Read robbie's sensor
     r_d = robbie.read_sensor(world)
 
@@ -383,3 +404,8 @@ while True:
     for p in particles:
         p.h += d_h # in case robot changed heading, swirl particle heading too
         p.advance_by(robbie.speed)
+
+    time.sleep(1)
+
+
+time.sleep(10)

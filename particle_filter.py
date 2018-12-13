@@ -15,30 +15,7 @@ from util import *
 
 from draw import Maze
 
-"""
-# Smaller maze
 
-maze_data = ( ( 2, 0, 1, 0, 0 ),
-              ( 0, 0, 0, 0, 1 ),
-              ( 1, 1, 1, 0, 0 ),
-              ( 1, 0, 0, 0, 0 ),
-              ( 0, 0, 2, 0, 1 ))
-"""
-
-# 0 - empty square
-# 1 - occupied square
-# 2 - occupied square with a beacon at each corner, detectable by the robot
-
-maze_data = ( ( 1, 1, 0, 0, 2, 0, 0, 0, 0, 1 ),
-              ( 1, 2, 0, 0, 1, 1, 0, 0, 0, 0 ),
-              ( 0, 1, 1, 0, 0, 0, 0, 1, 0, 1 ),
-              ( 0, 0, 0, 0, 1, 0, 0, 1, 1, 2 ),
-              ( 1, 1, 0, 1, 1, 2, 0, 0, 1, 0 ),
-              ( 1, 1, 1, 0, 1, 1, 1, 0, 2, 0 ),
-              ( 2, 0, 0, 0, 0, 0, 0, 0, 0, 0 ),
-              ( 1, 2, 0, 1, 1, 1, 1, 0, 0, 0 ),
-              ( 0, 0, 0, 0, 1, 0, 0, 0, 1, 0 ),
-              ( 0, 0, 1, 0, 0, 2, 1, 1, 1, 0 ))
 
 
 
@@ -53,6 +30,32 @@ ROBOT_HAS_COMPASS = True # Does the robot know where north is? If so, it
 
 # ------------------------------------------------------------------------
 # Some utility functions
+ranges = []
+headings = []
+
+
+def getHeading():
+    headings = []
+    with open("trajectories_2.txt") as f:
+        for line in f:
+            if line[:7] == "Heading":
+                headings.append(line[15:-2])
+    return headings
+
+def getRanges():
+    ranges = []
+    rangesStrArr = []
+    
+    with open("trajectories_2.txt") as f:
+        for line in f:
+            if line[:8] == "  ranges":
+                rangesStrArr.append(line[11:-2])
+
+    for range in rangesStrArr:
+        ranges.append(range.split(", "))
+    
+    return ranges
+
 
 def getRFID():
     linesFromFile = []
@@ -160,29 +163,6 @@ def getRFID():
                     matrix[x][y] = filled
                         
     return matrix
-    
-    '''print(matrix)
-    
-    RFID = []
-    
-    rowNum = 0
-    for row in matrix:
-        colNum = 0
-        for col in row:
-            if col == 0:
-    
-                if colNum == 0 or rowNum == 0 or colNum == matrixWidth*resolution-1 or rowNum == matrixHeight*resolution-1:
-                    RFID.append([float(rowNum)/resolution-offset_x,float(colNum)/resolution-offset_y])
-                elif not( colNum-1 >= 0 and rowNum-1 >= 0 and colNum+1 < matrixWidth*resolution and rowNum+1 < matrixHeight*resolution and  matrix[rowNum-1][colNum] == 0 and matrix[rowNum+1][colNum] == 0 and matrix[rowNum][colNum-1] == 0 and matrix[rowNum][colNum+1] == 0):
-                    RFID.append([float(rowNum)/resolution-offset_x,float(colNum)/resolution-offset_y])
-    
-    
-    
-    
-            colNum = colNum + 1
-        rowNum = rowNum + 1
-    
-    return RFID'''
 
 def add_noise(level, *coords):
     return [x + random.uniform(-level, level) for x in coords]
@@ -335,6 +315,11 @@ class Robot(Particle):
 # ------------------------------------------------------------------------
 
 maze_data = getRFID()
+
+headings = getHeading()
+
+ranges = getRanges()
+#print(ranges)
 
 world = Maze(maze_data)
 world.draw()

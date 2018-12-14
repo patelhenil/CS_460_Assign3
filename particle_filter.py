@@ -11,18 +11,15 @@ from __future__ import absolute_import
 import random
 import math
 import bisect
+import sys
 from util import *
-import time
 
 from draw import Maze
 
 
-
-
-
 PARTICLE_COUNT = 100    # Total number of particles
 
-ROBOT_HAS_COMPASS = True # Does the robot know where north is? If so, it
+ROBOT_HAS_COMPASS = True  # Does the robot know where north is? If so, it
 # makes orientation a lot easier since it knows which direction it is facing.
 # If not -- and that is really fascinating -- the particle filter can work
 # out its heading too, it just takes more particles and more time. Try this
@@ -34,100 +31,85 @@ ROBOT_HAS_COMPASS = True # Does the robot know where north is? If so, it
 ranges = []
 headings = []
 
-start = []
-
-resolution = 4
-headingCount = 0
-
-trajectoryName = "trajectories_2.txt"
 
 def getHeading():
     headings = []
-    with open(trajectoryName) as f:
+    with open("trajectories_2.txt") as f:
         for line in f:
             if line[:7] == "Heading":
                 headings.append(line[15:-2])
     return headings
 
-def getStart():
-    pair = []
-    with open(trajectoryName) as f:
-        for line in f:
-            if line[:3] == "  x":
-                pair.append(float(line[5:-1]))
-            if line[:3] == "  y":
-                pair.append(float(line[5:-1]))
-    return pair
 
 def getRanges():
     ranges = []
     rangesStrArr = []
-    
-    with open(trajectoryName) as f:
+
+    with open("trajectories_2.txt") as f:
         for line in f:
             if line[:8] == "  ranges":
                 rangesStrArr.append(line[11:-2])
 
     for range in rangesStrArr:
         ranges.append(range.split(", "))
-    
+
     return ranges
 
 
 def getRFID():
     linesFromFile = []
-    
-    
+
+    resolution = 4
     filled = 1
     empty = 0
-    
+
     with open("map_2.txt") as f:
         for line in f:
             line = line.replace("(", "")
             line = line.replace(")", "")
             line = line.replace("\n", "")
             linesFromFile.append(line)
-    
+
         matrixCornerFullString = linesFromFile[0]
         matrixCornersArr = matrixCornerFullString.split(' ')
-    
+
     obstacleList = []
-    
+
     x = 2
-    while x<len(linesFromFile):
+    while x < len(linesFromFile):
         obstacleStrings = linesFromFile[x].split(' ')
-        
+
         polygon = []
-        
+
         for string in obstacleStrings:
             polygon.append(string.split(','))
         obstacleList.append(polygon)
-        
+
         x = x + 1
-    
+
+    start = [2, 3]
+
     a = matrixCornersArr[0].split(',')
     b = matrixCornersArr[1].split(',')
     c = matrixCornersArr[2].split(',')
     d = matrixCornersArr[3].split(',')
-    
+
     offset_x = 0 - float(d[0])
     offset_y = 0 - float(b[1])
-    
-    
-    
+
     for obstacle in obstacleList:
         for point in obstacle:
             if point[0]:
                 point[0] = float(point[0]) + offset_x
                 point[1] = float(point[1]) + offset_y
-                
+
                 point[0] = point[0] * resolution
                 point[1] = point[1] * resolution
-                
+
                 temp = point[0]
                 point[0] = point[1]
                 point[1] = temp
-    
+
     start[0] = float(start[0]) + offset_x
     start[1] = float(start[1]) + offset_y
     start[0] = start[0] * resolution
@@ -135,66 +117,74 @@ def getRFID():
 
     matrixHeight = abs(float(a[1]) - float(b[1]))
     matrixWidth = abs(float(a[0]) - float(d[0]))
-    
+
     matrix = []
-    
+
     for row in range(0, int(matrixHeight) * resolution):
         rowArr = []
         for col in range(0, int(matrixWidth) * resolution):
             rowArr.append(empty)
         matrix.append(rowArr)
-    
-    for x in range(0,int(matrixHeight) * resolution):
+
+    for x in range(0, int(matrixHeight) * resolution):
         matrix[x][0] = filled
-        matrix[int(matrixHeight) * resolution-1][x] = filled
-        matrix[x][int(matrixHeight) * resolution-1] = filled
+        matrix[int(matrixHeight) * resolution - 1][x] = filled
+        matrix[x][int(matrixHeight) * resolution - 1] = filled
         matrix[0][x] = filled
-    
+
     for y in range(0, int(matrixHeight) * resolution):
         for x in range(0, int(matrixWidth) * resolution):
             if y + 1 >= matrixHeight * resolution or x + 1 >= matrixWidth * resolution:
                 continue
             # topleft
-        
+
             for obstacle in obstacleList:
                 if inside_polygon(x, y, obstacle) or on_polygon(x, y, obstacle):
                     matrix[x][y] = filled
-            
+
             # topright
             for obstacle in obstacleList:
                 if inside_polygon(x + 1, y, obstacle) or on_polygon(x + 1, y, obstacle):
                     matrix[x][y] = filled
-            
+
             # bottomleft
             for obstacle in obstacleList:
                 if inside_polygon(x, y + 1, obstacle) or on_polygon(x, y + 1, obstacle):
                     matrix[x][y] = filled
-            
+
             # bottomright
             for obstacle in obstacleList:
                 if inside_polygon(x + 1, y + 1, obstacle) or on_polygon(x + 1, y + 1, obstacle):
                     matrix[x][y] = filled
-                        
+
     return matrix
+
 
 def add_noise(level, *coords):
     return [x + random.uniform(-level, level) for x in coords]
 
+
 def add_little_noise(*coords):
     return add_noise(0.02, *coords)
+
 
 def add_some_noise(*coords):
     return add_noise(0.1, *coords)
 
+
 # This is just a gaussian kernel I pulled out of my hat, to transform
 # values near to robbie's measurement => 1, further away => 0
 sigma2 = 0.9 ** 2
+
+
 def w_gauss(a, b):
     error = a - b
     g = math.e ** -(error ** 2 / (2 * sigma2))
     return g
 
 # ------------------------------------------------------------------------
+
+
 def compute_mean_point(particles):
     """
     Compute the mean for all particles that have a reasonably good weight.
@@ -224,6 +214,8 @@ def compute_mean_point(particles):
     return m_x, m_y, m_count > PARTICLE_COUNT * 0.95
 
 # ------------------------------------------------------------------------
+
+
 class WeightedDistribution(object):
     def __init__(self, state):
         accum = 0.0
@@ -241,6 +233,8 @@ class WeightedDistribution(object):
             return None
 
 # ------------------------------------------------------------------------
+
+
 class Particle(object):
     def __init__(self, x, y, heading=None, w=1, noisy=False):
         if heading is None:
@@ -268,17 +262,73 @@ class Particle(object):
     def create_random(cls, count, maze):
         return [cls(*maze.random_free_place()) for _ in range(0, count)]
 
-    def read_sensor(self, maze):
+    def draw_line(self, coords_a, slope, maze):
+
+        x, y
+
+        if slope == 0:
+            x = coords_a[0] + 10
+            y = coords_a[1]
+
+        elif slope == sys.maxsize:
+            x = coords_a[0]
+            y = coords_a[1] + 10
+
+        else:
+            dx = (10 / math.sqrt(1 + (m * m)))
+            dy = m * dx
+            x = coords_a[0] + dx
+            y = coords_a[1] + dy
+
+        x0, y0 = coords_a
+        x1 = x
+        y1 = y
+        dx = abs(x1 - x0)
+        dy = abs(y1 - y0)
+        sx = 1 if x0 < x1 else -1
+        sy = 1 if y0 < y1 else -1
+        err = dx - dy
+
+    while True:
+        if x0 == x1 and y0 == y1:
+            break
+        if maze.is_free(x0, y0) is False:
+            break
+        e2 = err * 2
+        if e2 > -dy:
+            err = err - dy
+            x0 = x0 + sx
+        if e2 < dx:
+            err = err + dx
+            y0 = y0 + sy
+
+    return (x0, y0)
+
+    def read_sensor(self, maze, count):
         """
-        Find distance to nearest beacon.
+        Return array of ranges
         """
-        return maze.distance_to_nearest_beacon(*self.xy)
+        ranges = []
+        start = math.cos(math.radians(heading[count])) - 30
+        end = math.cos(math.radians(heading[count])) + 30
+        for head in range(start, end):
+            self.h = head
+            slope = math.tan(self.h)
+            endpoint = drawline((self.x, self.y), slope, maze)
+
+            if maze.is_free(endpoint[0], endpoint[1]) is False:
+                ranges.append(math.hypot(endpoint[0] - self.x, endpoint[1] - self.y))
+
+            else:
+                append("nan")
+
+        return ranges
 
     def advance_by(self, speed, checker=None, noisy=False):
         h = self.h
         if noisy:
             speed, h = add_little_noise(speed, h)
-            h += random.uniform(-3, 3) # needs more noise to disperse better
+            h += random.uniform(-3, 3)  # needs more noise to disperse better
         r = math.radians(h)
         dx = math.sin(r) * speed
         dy = math.cos(r) * speed
@@ -292,20 +342,18 @@ class Particle(object):
         self.y += y
 
 # ------------------------------------------------------------------------
+
+
 class Robot(Particle):
     speed = 0.2
-    
-    headingCount = 0
-    
+
     def __init__(self, maze):
-        #super(Robot, self).__init__(*maze.random_free_place(), heading=90)
-        super(Robot, self).__init__(*start, heading=90)
+        super(Robot, self).__init__(*maze.random_free_place(), heading=90)
         self.chose_random_direction()
         self.step_count = 0
 
     def chose_random_direction(self):
-        heading = math.degrees(float(headings[self.headingCount]))
-        self.headingCount = self.headingCount + 1
+        heading = random.uniform(0, 360)
         self.h = heading
 
     def read_sensor(self, maze):
@@ -320,27 +368,24 @@ class Robot(Particle):
         """
         Move the robot. Note that the movement is stochastic too.
         """
-        '''while True:
+        while True:
             self.step_count += 1
             if self.advance_by(self.speed, noisy=True,
-                checker=lambda r, dx, dy: maze.is_free(r.x+dx, r.y+dy)):
+                               checker=lambda r, dx, dy: maze.is_free(r.x + dx, r.y + dy)):
                 break
             # Bumped into something or too long in same direction,
             # chose random new direction
-            self.chose_random_direction()'''
-        self.step_count += 1
-        self.chose_random_direction()
-            
+            self.chose_random_direction()
 
 # ------------------------------------------------------------------------
-start = getStart()
-maze_data = getRFID()
 
+
+maze_data = getRFID()
 
 headings = getHeading()
 
 ranges = getRanges()
-#print(ranges)
+# print(ranges)
 
 world = Maze(maze_data)
 world.draw()
@@ -349,7 +394,7 @@ world.draw()
 particles = Particle.create_random(PARTICLE_COUNT, world)
 robbie = Robot(world)
 
-while robbie.headingCount < len(headings):
+while True:
     # Read robbie's sensor
     r_d = robbie.read_sensor(world)
 
@@ -388,8 +433,8 @@ while robbie.headingCount < len(headings):
             new_particle = Particle.create_random(1, world)[0]
         else:
             new_particle = Particle(p.x, p.y,
-                    heading=robbie.h if ROBOT_HAS_COMPASS else p.h,
-                    noisy=True)
+                                    heading=robbie.h if ROBOT_HAS_COMPASS else p.h,
+                                    noisy=True)
         new_particles.append(new_particle)
 
     particles = new_particles
@@ -402,10 +447,5 @@ while robbie.headingCount < len(headings):
     # Move particles according to my belief of movement (this may
     # be different than the real movement, but it's all I got)
     for p in particles:
-        p.h += d_h # in case robot changed heading, swirl particle heading too
+        p.h += d_h  # in case robot changed heading, swirl particle heading too
         p.advance_by(robbie.speed)
-
-    time.sleep(1)
-
-
-time.sleep(10)

@@ -445,21 +445,15 @@ class Robot(Particle):
     distanceCount = 0
 
     def __init__(self, maze):
-        
-        yaw = 2 * 180 / math.pi
-            
-        if yaw < 0:
-            yaw += 360.0
-        
-        super(Robot, self).__init__(*start, heading=yaw)
+        super(Robot, self).__init__(*start, heading=0)
         self.chose_random_direction()
-        self.step_count = 0
 
     def chose_random_direction(self):
         print(self.distanceCount)
-        heading = orientations[self.distanceCount]
-        
-        self.h = heading
+        heading = float(headings[self.distanceCount])
+        heading = math.degrees(heading)
+        print(heading)
+        self.h =  heading
 
     def read_sensor(self, maze):
         """
@@ -493,11 +487,14 @@ class Robot(Particle):
 # ------------------------------------------------------------------------
 
 start = getStart()
-orientations = getOrientations()
+#orientations = getOrientations()
 distances = getDistances()
+headings = getHeading()
+print(headings)
+
 maze_data = getRFID()
 
-headings = getHeading()
+
 
 ranges = getRanges()
 # print(ranges)

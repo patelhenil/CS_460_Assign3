@@ -14,11 +14,12 @@ import bisect
 import sys
 import time
 from util import *
+import numpy
 
 from draw import Maze
 
 
-PARTICLE_COUNT = 1000    # Total number of particles
+PARTICLE_COUNT = 100    # Total number of particles
 
 ROBOT_HAS_COMPASS = True  # Does the robot know where north is? If so, it
 # makes orientation a lot easier since it knows which direction it is facing.
@@ -41,6 +42,56 @@ headingCount = 0
 trajectoryName = "trajectories_2.txt"
 mapName = "map_2.txt"
 
+def getOrientations():
+    orientations = []
+    
+    lines = []
+    
+    with open(trajectoryName) as f:
+        for line in f:
+            lines.append(line)
+    
+
+    count = 0
+    while count < len(lines):
+        line = lines[count]
+        
+        quar = []
+        
+        if line[:15] == "    orientation":
+            count += 1
+            line = lines[count]
+            
+            quar.append(float(line[9:-2]))
+
+            count += 1
+            line = lines[count]
+            quar.append( float(line[9:-2]))
+     
+            count += 1
+            line = lines[count]
+            quar.append( float(line[9:-2]))
+
+            count += 1
+            line = lines[count]
+            quar.append( float(line[9:-2]))
+            
+            quar.insert(0, quar.pop())
+
+
+        if len(quar) == 4:
+            yaw = numpy.arctan2(quar[1]*quar[2]+quar[0]*quar[3], (1/2)-(quar[2]**2 + quar[3]**2))
+            yaw = yaw * 180 / math.pi
+            
+            if yaw < 0:
+                yaw += 360.0
+            
+            orientations.append(yaw)
+
+        count += 1
+    
+    print(orientations)
+    return orientations
 
 def getHeading():
     headings = []
@@ -183,7 +234,8 @@ def getRFID():
                 for obstacle in obstacleList:
                     if inside_polygon(x + 1, y + 1, obstacle) or on_polygon(x + 1, y + 1, obstacle):
                         matrix[x][y] = filled
-    print(matrix)
+
+    matrix.reverse()
     return matrix
 
 
@@ -219,7 +271,7 @@ def w_gauss(a, b):
         elif b[count] == "nan":
             sum_error = abs(float(a[count]))
         else:
-            sum_error = abs(float(a[count]) - b[count])
+            sum_error = abs(float(a[count]) - float(b[count]))
 
         g += math.e ** -(sum_error ** 2 / (2 * sigma2))
         
@@ -393,12 +445,20 @@ class Robot(Particle):
     distanceCount = 0
 
     def __init__(self, maze):
-        super(Robot, self).__init__(*start, heading=90)
+        
+        yaw = 2 * 180 / math.pi
+            
+        if yaw < 0:
+            yaw += 360.0
+        
+        super(Robot, self).__init__(*start, heading=yaw)
         self.chose_random_direction()
         self.step_count = 0
 
     def chose_random_direction(self):
-        heading = random.uniform(0, 360)
+        print(self.distanceCount)
+        heading = orientations[self.distanceCount]
+        
         self.h = heading
 
     def read_sensor(self, maze):
@@ -413,21 +473,27 @@ class Robot(Particle):
         """
         Move the robot. Note that the movement is stochastic too.
         """
+        self.chose_random_direction()
+        self.speed = float(distances[self.distanceCount])*resolution
         while True:
-            self.step_count += 1
-            if self.advance_by(float(distances[self.distanceCount])*resolution, noisy=True,
+            if self.advance_by(self.speed, noisy=True,
                                checker=lambda r, dx, dy: maze.is_free(r.x + dx, r.y + dy)):
                 break
         
             # Bumped into something or too long in same direction,
             # chose random new direction
-            self.chose_random_direction()
+            '''self.h = self.h + 1
+            if math.ceil(self.h) == 360:
+                self.h = 0.0
+            print("change angle",self.h)'''
+            
 
         self.distanceCount += 1
 
 # ------------------------------------------------------------------------
 
 start = getStart()
+orientations = getOrientations()
 distances = getDistances()
 maze_data = getRFID()
 

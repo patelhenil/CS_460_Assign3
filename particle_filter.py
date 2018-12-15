@@ -178,7 +178,11 @@ sigma2 = 0.9 ** 2
 
 
 def w_gauss(a, b):
-    error = a - b
+    size = min(len(a), len(b))
+
+    for count in range(size):
+        error += math.abs(a[count] - b[count])
+
     g = math.e ** -(error ** 2 / (2 * sigma2))
     return g
 
@@ -393,10 +397,12 @@ world.draw()
 # initial distribution assigns each particle an equal probability
 particles = Particle.create_random(PARTICLE_COUNT, world)
 robbie = Robot(world)
+count = 0
 
 while True:
     # Read robbie's sensor
-    r_d = robbie.read_sensor(world)
+    r_d = ranges[count]
+    count += 0
 
     # Update particle weight according to how good every particle matches
     # robbie's sensor reading

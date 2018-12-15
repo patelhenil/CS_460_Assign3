@@ -32,63 +32,79 @@ ROBOT_HAS_COMPASS = True  # Does the robot know where north is? If so, it
 ranges = []
 headings = []
 
+start = []
+
+resolution = 4
+headingCount = 0
+
+trajectoryName = "trajectories_2.txt"
+mapName = "map_2.txt"
+
 
 def getHeading():
     headings = []
-    with open("trajectories_2.txt") as f:
+    with open(trajectoryName) as f:
         for line in f:
             if line[:7] == "Heading":
                 headings.append(line[15:-2])
     return headings
 
 
+def getStart():
+    pair = []
+    with open(trajectoryName) as f:
+        for line in f:
+            if line[:3] == "  x":
+                pair.append(float(line[5:-1]))
+            if line[:3] == "  y":
+                pair.append(float(line[5:-1]))
+    return pair
+
+
 def getRanges():
     ranges = []
     rangesStrArr = []
-
-    with open("trajectories_2.txt") as f:
+    
+    with open(trajectoryName) as f:
         for line in f:
             if line[:8] == "  ranges":
                 rangesStrArr.append(line[11:-2])
 
     for range in rangesStrArr:
         ranges.append(range.split(", "))
-
+    
     return ranges
 
 
 def getRFID():
     linesFromFile = []
-
-    resolution = 4
+    
     filled = 1
     empty = 0
-
-    with open("map_2.txt") as f:
+    
+    with open(mapName) as f:
         for line in f:
             line = line.replace("(", "")
             line = line.replace(")", "")
             line = line.replace("\n", "")
             linesFromFile.append(line)
-
+        
         matrixCornerFullString = linesFromFile[0]
         matrixCornersArr = matrixCornerFullString.split(' ')
-
+    
     obstacleList = []
 
     x = 2
     while x < len(linesFromFile):
         obstacleStrings = linesFromFile[x].split(' ')
-
+        
         polygon = []
-
+        
         for string in obstacleStrings:
             polygon.append(string.split(','))
         obstacleList.append(polygon)
 
         x = x + 1
-
-    start = [2, 3]
 
     a = matrixCornersArr[0].split(',')
     b = matrixCornersArr[1].split(',')
@@ -103,10 +119,10 @@ def getRFID():
             if point[0]:
                 point[0] = float(point[0]) + offset_x
                 point[1] = float(point[1]) + offset_y
-
+                
                 point[0] = point[0] * resolution
                 point[1] = point[1] * resolution
-
+                    
                 temp = point[0]
                 point[0] = point[1]
                 point[1] = temp
@@ -128,37 +144,39 @@ def getRFID():
         matrix.append(rowArr)
 
     for x in range(0, int(matrixHeight) * resolution):
+        print(x)
         matrix[x][0] = filled
         matrix[int(matrixHeight) * resolution - 1][x] = filled
         matrix[x][int(matrixHeight) * resolution - 1] = filled
         matrix[0][x] = filled
+            
+        for y in range(0, int(matrixHeight) * resolution):
+            for x in range(0, int(matrixWidth) * resolution):
+                if y + 1 >= matrixHeight * resolution or x + 1 >= matrixWidth * resolution:
+                    continue
+                # topleft
+                
+                for obstacle in obstacleList:
+                    if inside_polygon(x, y, obstacle) or on_polygon(x, y, obstacle):
+                        matrix[x][y] = filled
+            
+                # topright
+                for obstacle in obstacleList:
+                    if inside_polygon(x + 1, y, obstacle) or on_polygon(x + 1, y, obstacle):
+                        matrix[x][y] = filled
 
-    for y in range(0, int(matrixHeight) * resolution):
-        for x in range(0, int(matrixWidth) * resolution):
-            if y + 1 >= matrixHeight * resolution or x + 1 >= matrixWidth * resolution:
-                continue
-            # topleft
-
-            for obstacle in obstacleList:
-                if inside_polygon(x, y, obstacle) or on_polygon(x, y, obstacle):
-                    matrix[x][y] = filled
-
-            # topright
-            for obstacle in obstacleList:
-                if inside_polygon(x + 1, y, obstacle) or on_polygon(x + 1, y, obstacle):
-                    matrix[x][y] = filled
-
-            # bottomleft
-            for obstacle in obstacleList:
-                if inside_polygon(x, y + 1, obstacle) or on_polygon(x, y + 1, obstacle):
-                    matrix[x][y] = filled
-
-            # bottomright
-            for obstacle in obstacleList:
-                if inside_polygon(x + 1, y + 1, obstacle) or on_polygon(x + 1, y + 1, obstacle):
-                    matrix[x][y] = filled
-
+                # bottomleft
+                for obstacle in obstacleList:
+                    if inside_polygon(x, y + 1, obstacle) or on_polygon(x, y + 1, obstacle):
+                        matrix[x][y] = filled
+                    
+                # bottomright
+                for obstacle in obstacleList:
+                    if inside_polygon(x + 1, y + 1, obstacle) or on_polygon(x + 1, y + 1, obstacle):
+                        matrix[x][y] = filled
+    print(matrix)
     return matrix
+
 
 
 def add_noise(level, *coords):
@@ -396,7 +414,7 @@ class Robot(Particle):
 
 # ------------------------------------------------------------------------
 
-
+start = getStart()
 maze_data = getRFID()
 
 headings = getHeading()

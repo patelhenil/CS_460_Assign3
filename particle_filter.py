@@ -415,7 +415,7 @@ class Robot(Particle):
         """
         while True:
             self.step_count += 1
-            if self.advance_by(float(distances[self.distanceCount]), noisy=True,
+            if self.advance_by(float(distances[self.distanceCount])*resolution, noisy=True,
                                checker=lambda r, dx, dy: maze.is_free(r.x + dx, r.y + dy)):
                 break
         

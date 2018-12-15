@@ -383,7 +383,7 @@ class Robot(Particle):
     speed = 0.2
 
     def __init__(self, maze):
-        super(Robot, self).__init__(*maze.random_free_place(), heading=90)
+        super(Robot, self).__init__(*start, heading=90)
         self.chose_random_direction()
         self.step_count = 0
 
@@ -488,7 +488,7 @@ while count < len(headings):
     for p in particles:
         p.h += d_h  # in case robot changed heading, swirl particle heading too
         p.advance_by(robbie.speed)
-    time.sleep(1)
+    time.sleep(0.5)
 
 time.sleep(10)
 

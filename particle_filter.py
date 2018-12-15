@@ -12,6 +12,7 @@ import random
 import math
 import bisect
 import sys
+import time
 from util import *
 
 from draw import Maze
@@ -469,4 +470,7 @@ while count < len(headings):
     for p in particles:
         p.h += d_h  # in case robot changed heading, swirl particle heading too
         p.advance_by(robbie.speed)
+    time.sleep(1)
+
+time.sleep(10)
 

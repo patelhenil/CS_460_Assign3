@@ -18,7 +18,7 @@ from util import *
 from draw import Maze
 
 
-PARTICLE_COUNT = 100    # Total number of particles
+PARTICLE_COUNT = 1000    # Total number of particles
 
 ROBOT_HAS_COMPASS = True  # Does the robot know where north is? If so, it
 # makes orientation a lot easier since it knows which direction it is facing.
@@ -31,6 +31,7 @@ ROBOT_HAS_COMPASS = True  # Does the robot know where north is? If so, it
 # Some utility functions
 ranges = []
 headings = []
+distances = []
 
 start = []
 
@@ -48,6 +49,14 @@ def getHeading():
             if line[:7] == "Heading":
                 headings.append(line[15:-2])
     return headings
+
+def getDistances():
+    distances = []
+    with open(trajectoryName) as f:
+        for line in f:
+            if line[:8] == "Distance":
+                distances.append(line[16:-2])
+    return distances
 
 
 def getStart():
@@ -381,6 +390,7 @@ class Particle(object):
 
 class Robot(Particle):
     speed = 0.2
+    distanceCount = 0
 
     def __init__(self, maze):
         super(Robot, self).__init__(*start, heading=90)
@@ -405,16 +415,20 @@ class Robot(Particle):
         """
         while True:
             self.step_count += 1
-            if self.advance_by(self.speed, noisy=True,
+            if self.advance_by(float(distances[self.distanceCount]), noisy=True,
                                checker=lambda r, dx, dy: maze.is_free(r.x + dx, r.y + dy)):
                 break
+        
             # Bumped into something or too long in same direction,
             # chose random new direction
             self.chose_random_direction()
 
+        self.distanceCount += 1
+
 # ------------------------------------------------------------------------
 
 start = getStart()
+distances = getDistances()
 maze_data = getRFID()
 
 headings = getHeading()
@@ -490,5 +504,5 @@ while count < len(headings):
         p.advance_by(robbie.speed)
     time.sleep(0.5)
 
-time.sleep(10)
+time.sleep(20)
 

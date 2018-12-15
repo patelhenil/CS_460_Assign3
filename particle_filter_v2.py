@@ -17,7 +17,7 @@ from util import *
 from draw import Maze
 
 
-PARTICLE_COUNT = 100    # Total number of particles
+PARTICLE_COUNT = 5000    # Total number of particles
 
 ROBOT_HAS_COMPASS = True  # Does the robot know where north is? If so, it
 # makes orientation a lot easier since it knows which direction it is facing.

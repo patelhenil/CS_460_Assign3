@@ -293,20 +293,20 @@ class Particle(object):
         sy = 1 if y0 < y1 else -1
         err = dx - dy
 
-    while True:
-        if x0 == x1 and y0 == y1:
-            break
-        if maze.is_free(x0, y0) is False:
-            break
-        e2 = err * 2
-        if e2 > -dy:
-            err = err - dy
-            x0 = x0 + sx
-        if e2 < dx:
-            err = err + dx
-            y0 = y0 + sy
+        while True:
+            if x0 == x1 and y0 == y1:
+                break
+            if maze.is_free(x0, y0) is False:
+                break
+            e2 = err * 2
+            if e2 > -dy:
+                err = err - dy
+                x0 = x0 + sx
+            if e2 < dx:
+                err = err + dx
+                y0 = y0 + sy
 
-    return (x0, y0)
+        return (x0, y0)
 
     def read_sensor(self, maze, count):
         """

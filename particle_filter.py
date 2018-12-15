@@ -31,85 +31,100 @@ ROBOT_HAS_COMPASS = True  # Does the robot know where north is? If so, it
 ranges = []
 headings = []
 
+start = []
+
+resolution = 4
+headingCount = 0
+
+trajectoryName = "trajectories_2.txt"
 
 def getHeading():
     headings = []
-    with open("trajectories_2.txt") as f:
+    with open(trajectoryName) as f:
         for line in f:
             if line[:7] == "Heading":
                 headings.append(line[15:-2])
     return headings
 
+def getStart():
+    pair = []
+    with open(trajectoryName) as f:
+        for line in f:
+            if line[:3] == "  x":
+                pair.append(float(line[5:-1]))
+            if line[:3] == "  y":
+                pair.append(float(line[5:-1]))
+    return pair
 
 def getRanges():
     ranges = []
     rangesStrArr = []
-
-    with open("trajectories_2.txt") as f:
+    
+    with open(trajectoryName) as f:
         for line in f:
             if line[:8] == "  ranges":
                 rangesStrArr.append(line[11:-2])
 
     for range in rangesStrArr:
         ranges.append(range.split(", "))
-
+    
     return ranges
 
 
 def getRFID():
     linesFromFile = []
-
-    resolution = 4
+    
+    
     filled = 1
     empty = 0
-
+    
     with open("map_2.txt") as f:
         for line in f:
             line = line.replace("(", "")
             line = line.replace(")", "")
             line = line.replace("\n", "")
             linesFromFile.append(line)
-
+        
         matrixCornerFullString = linesFromFile[0]
         matrixCornersArr = matrixCornerFullString.split(' ')
-
+    
     obstacleList = []
-
+    
     x = 2
-    while x < len(linesFromFile):
+    while x<len(linesFromFile):
         obstacleStrings = linesFromFile[x].split(' ')
-
+        
         polygon = []
-
+        
         for string in obstacleStrings:
             polygon.append(string.split(','))
         obstacleList.append(polygon)
-
+        
         x = x + 1
-
-    start = [2, 3]
-
+    
     a = matrixCornersArr[0].split(',')
     b = matrixCornersArr[1].split(',')
     c = matrixCornersArr[2].split(',')
     d = matrixCornersArr[3].split(',')
-
+    
     offset_x = 0 - float(d[0])
     offset_y = 0 - float(b[1])
-
+    
+    
+    
     for obstacle in obstacleList:
         for point in obstacle:
             if point[0]:
                 point[0] = float(point[0]) + offset_x
                 point[1] = float(point[1]) + offset_y
-
+                
                 point[0] = point[0] * resolution
                 point[1] = point[1] * resolution
-
+                
                 temp = point[0]
                 point[0] = point[1]
                 point[1] = temp
-
+    
     start[0] = float(start[0]) + offset_x
     start[1] = float(start[1]) + offset_y
     start[0] = start[0] * resolution
@@ -119,45 +134,45 @@ def getRFID():
     matrixWidth = abs(float(a[0]) - float(d[0]))
 
     matrix = []
-
+    
     for row in range(0, int(matrixHeight) * resolution):
         rowArr = []
         for col in range(0, int(matrixWidth) * resolution):
             rowArr.append(empty)
         matrix.append(rowArr)
 
-    for x in range(0, int(matrixHeight) * resolution):
+    for x in range(0,int(matrixHeight) * resolution):
         matrix[x][0] = filled
-        matrix[int(matrixHeight) * resolution - 1][x] = filled
-        matrix[x][int(matrixHeight) * resolution - 1] = filled
+        matrix[int(matrixHeight) * resolution-1][x] = filled
+        matrix[x][int(matrixHeight) * resolution-1] = filled
         matrix[0][x] = filled
+        
+        for y in range(0, int(matrixHeight) * resolution):
+            for x in range(0, int(matrixWidth) * resolution):
+                if y + 1 >= matrixHeight * resolution or x + 1 >= matrixWidth * resolution:
+                    continue
+                # topleft
+                
+                for obstacle in obstacleList:
+                    if inside_polygon(x, y, obstacle) or on_polygon(x, y, obstacle):
+                        matrix[x][y] = filled
+                
+                # topright
+                for obstacle in obstacleList:
+                    if inside_polygon(x + 1, y, obstacle) or on_polygon(x + 1, y, obstacle):
+                        matrix[x][y] = filled
+                
+                # bottomleft
+                for obstacle in obstacleList:
+                    if inside_polygon(x, y + 1, obstacle) or on_polygon(x, y + 1, obstacle):
+                        matrix[x][y] = filled
+                
+                # bottomright
+                for obstacle in obstacleList:
+                    if inside_polygon(x + 1, y + 1, obstacle) or on_polygon(x + 1, y + 1, obstacle):
+                        matrix[x][y] = filled
 
-    for y in range(0, int(matrixHeight) * resolution):
-        for x in range(0, int(matrixWidth) * resolution):
-            if y + 1 >= matrixHeight * resolution or x + 1 >= matrixWidth * resolution:
-                continue
-            # topleft
-
-            for obstacle in obstacleList:
-                if inside_polygon(x, y, obstacle) or on_polygon(x, y, obstacle):
-                    matrix[x][y] = filled
-
-            # topright
-            for obstacle in obstacleList:
-                if inside_polygon(x + 1, y, obstacle) or on_polygon(x + 1, y, obstacle):
-                    matrix[x][y] = filled
-
-            # bottomleft
-            for obstacle in obstacleList:
-                if inside_polygon(x, y + 1, obstacle) or on_polygon(x, y + 1, obstacle):
-                    matrix[x][y] = filled
-
-            # bottomright
-            for obstacle in obstacleList:
-                if inside_polygon(x + 1, y + 1, obstacle) or on_polygon(x + 1, y + 1, obstacle):
-                    matrix[x][y] = filled
-
-    return matrix
+        return matrix
 
 
 def add_noise(level, *coords):
@@ -185,6 +200,49 @@ def w_gauss(a, b):
 
     g = math.e ** -(error ** 2 / (2 * sigma2))
     return g
+
+
+def draw_line(self, coords_a, slope, maze):
+    
+    x, y
+        
+    if slope == 0:
+        x = coords_a[0] + 10
+        y = coords_a[1]
+    
+    elif slope == sys.maxsize:
+        x = coords_a[0]
+        y = coords_a[1] + 10
+        
+    else:
+        dx = (10 / math.sqrt(1 + (m * m)))
+        dy = m * dx
+        x = coords_a[0] + dx
+        y = coords_a[1] + dy
+        
+        x0, y0 = coords_a
+        x1 = x
+        y1 = y
+        dx = abs(x1 - x0)
+        dy = abs(y1 - y0)
+        sx = 1 if x0 < x1 else -1
+        sy = 1 if y0 < y1 else -1
+        err = dx - dy
+        
+        while True:
+            if x0 == x1 and y0 == y1:
+                break
+            if maze.is_free(x0, y0) is False:
+                break
+            e2 = err * 2
+            if e2 > -dy:
+                err = err - dy
+                x0 = x0 + sx
+            if e2 < dx:
+                err = err + dx
+                y0 = y0 + sy
+        
+                return (x0, y0)
 
 # ------------------------------------------------------------------------
 
@@ -266,59 +324,29 @@ class Particle(object):
     def create_random(cls, count, maze):
         return [cls(*maze.random_free_place()) for _ in range(0, count)]
 
-    def draw_line(self, coords_a, slope, maze):
+    
 
-        x, y
-
-        if slope == 0:
-            x = coords_a[0] + 10
-            y = coords_a[1]
-
-        elif slope == sys.maxsize:
-            x = coords_a[0]
-            y = coords_a[1] + 10
-
-        else:
-            dx = (10 / math.sqrt(1 + (m * m)))
-            dy = m * dx
-            x = coords_a[0] + dx
-            y = coords_a[1] + dy
-
-        x0, y0 = coords_a
-        x1 = x
-        y1 = y
-        dx = abs(x1 - x0)
-        dy = abs(y1 - y0)
-        sx = 1 if x0 < x1 else -1
-        sy = 1 if y0 < y1 else -1
-        err = dx - dy
-
-        while True:
-            if x0 == x1 and y0 == y1:
-                break
-            if maze.is_free(x0, y0) is False:
-                break
-            e2 = err * 2
-            if e2 > -dy:
-                err = err - dy
-                x0 = x0 + sx
-            if e2 < dx:
-                err = err + dx
-                y0 = y0 + sy
-
-        return (x0, y0)
-
-    def read_sensor(self, maze, count):
+    def read_sensor(self, maze, head_data):
         """
         Return array of ranges
         """
+        
+        print(count)
+        
         ranges = []
-        start = math.cos(math.radians(heading[count])) - 30
-        end = math.cos(math.radians(heading[count])) + 30
+        start = math.cos(math.radians(float(headings[count]))) - 30
+        end = math.cos(math.radians(float(headings[count]))) + 30
+        
+        start = int(math.ceil(start))
+        end = int(math.ceil(end))
+        
+        print(start)
+        print(end)
+        
         for head in range(start, end):
             self.h = head
             slope = math.tan(self.h)
-            endpoint = drawline((self.x, self.y), slope, maze)
+            endpoint = draw_line((self.x, self.y), slope, maze)
 
             if maze.is_free(endpoint[0], endpoint[1]) is False:
                 ranges.append(math.hypot(endpoint[0] - self.x, endpoint[1] - self.y))
@@ -383,7 +411,7 @@ class Robot(Particle):
 
 # ------------------------------------------------------------------------
 
-
+start = getStart()
 maze_data = getRFID()
 
 headings = getHeading()
@@ -402,13 +430,14 @@ count = 0
 while True:
     # Read robbie's sensor
     r_d = ranges[count]
+    heading_data = headings[count]
     count += 0
 
     # Update particle weight according to how good every particle matches
     # robbie's sensor reading
     for p in particles:
         if world.is_free(*p.xy):
-            p_d = p.read_sensor(world)
+            p_d = p.read_sensor(world, heading_data)
             p.w = w_gauss(r_d, p_d)
         else:
             p.w = 0
@@ -455,3 +484,4 @@ while True:
     for p in particles:
         p.h += d_h  # in case robot changed heading, swirl particle heading too
         p.advance_by(robbie.speed)
+

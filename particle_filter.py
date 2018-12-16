@@ -34,15 +34,70 @@ ranges = []
 headings = []
 distances = []
 
+noisyHeadings = []
+noisyDistances = []
+
 start = []
 
-resolution = 8
+resolution = 4
 
 trajectoryName = "trajectories_2.txt"
 mapName = "map_2.txt"
 
 offset_x = 0
 offset_y = 0
+
+def getNoisyDistances():
+    noises = []
+    
+    lines = []
+    
+    with open(trajectoryName) as f:
+        for line in f:
+            lines.append(line)
+
+
+    count = 0
+    while count < len(lines):
+        line = lines[count]
+        
+        quar = []
+        
+        if line[:14] == "noisy_distance":
+            count += 1
+            line = lines[count]
+            
+            noises.append(float(line[8:-2]))
+        
+        count += 1
+
+    return noises
+
+def getNoisyHeadings():
+    noises = []
+    
+    lines = []
+    
+    with open(trajectoryName) as f:
+        for line in f:
+            lines.append(line)
+
+
+    count = 0
+    while count < len(lines):
+        line = lines[count]
+        
+        quar = []
+        
+        if line[:13] == "noisy_heading":
+            count += 1
+            line = lines[count]
+            
+            noises.append(float(line[8:-2]))
+        
+        count += 1
+
+    return noises
 
 def getOrientations():
     orientations = []
@@ -339,7 +394,7 @@ class Particle(object):
         if heading is None:
             heading = random.uniform(0, 360)
         if noisy:
-            x, y, heading = add_some_noise(x, y, heading)
+            x, y, heading = x,y,headings[0]
 
         self.x = x
         self.y = y
@@ -424,9 +479,8 @@ class Particle(object):
 
     def advance_by(self, speed, checker=None, noisy=False):
         h = self.h
-        if noisy:
-            speed, h = add_little_noise(speed, h)
-            h += random.uniform(-3, 3)  # needs more noise to disperse better
+
+    
         r = math.radians(h)
         dx = math.sin(r) * speed
         dy = math.cos(r) * speed
@@ -443,26 +497,43 @@ class Particle(object):
 
 
 class Robot(Particle):
-    speed = 0.2
+    speed = 0
+    oldSpeed = 0
     distanceCount = 0
-
+    oldHeading = 0
+    
+ 
     def __init__(self, maze):
         super(Robot, self).__init__(*start, heading=0)
-        self.chose_random_direction()
 
     def chose_random_direction(self):
         print(self.distanceCount)
+        
+        if self.distanceCount > 0:
+            oldRadian = float(headings[self.distanceCount-1])
+        else:
+            oldRadian = 0
+        
         heading = float(headings[self.distanceCount])
         print("heading from txt",headings[self.distanceCount])
-        heading = heading*180
-        heading = heading/math.pi
-        heading = math.ceil(heading)
+        heading = math.degrees(heading)
         heading = heading + 180.0
+        
+        
+        if self.speed == 0:
+            heading = heading + self.oldHeading
+        else:
+            heading = self.oldHeading
+            heading = heading + heading - (math.degrees(oldRadian)+180)
+        
+        
         print("heading calculated",heading)
         print("speed",self.speed/resolution)
         
-        print("coor",self.x/resolution - offset_x,self.y/resolution - offset_y)
+        
         self.h =  heading
+        self.oldHeading = heading
+        self.oldSpeed = self.speed
 
     def read_sensor(self, maze):
         """
@@ -493,15 +564,20 @@ class Robot(Particle):
             
 
         self.distanceCount += 1
+        
+        print("coor",self.x/resolution - offset_x,self.y/resolution - offset_y)
+        
         return self.distanceCount
 
 # ------------------------------------------------------------------------
 
 start = getStart()
+#noisyHeadings = getNoisyHeadings()
+#noisyDistances = getNoisyDistances()
 #orientations = getOrientations()
-distances = getDistances()
-headings = getHeading()
-print(headings)
+distances = getNoisyDistances()
+headings = getNoisyHeadings()
+print(distances)
 
 maze_data,offset_x,offset_y = getRFID()
 
@@ -579,5 +655,5 @@ while count < len(headings):
         p.advance_by(robbie.speed)
     time.sleep(0.5)
 
-time.sleep(20)
+time.sleep(1000)
 

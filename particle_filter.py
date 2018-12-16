@@ -15,13 +15,14 @@ import sys
 import time
 from util import *
 import numpy
+import pickle
 
 from draw import Maze
 
 
-PARTICLE_COUNT = 1000    # Total number of particles
+PARTICLE_COUNT = 4000    # Total number of particles
 
-ROBOT_HAS_COMPASS = True  # Does the robot know where north is? If so, it
+ROBOT_HAS_COMPASS = False  # Does the robot know where north is? If so, it
 # makes orientation a lot easier since it knows which direction it is facing.
 # If not -- and that is really fascinating -- the particle filter can work
 # out its heading too, it just takes more particles and more time. Try this
@@ -39,7 +40,7 @@ noisyDistances = []
 
 start = []
 
-resolution = 10
+resolution = 16
 
 trajectoryName = "trajectories_2.txt"
 mapName = "map_2.txt"
@@ -145,104 +146,117 @@ def getRanges():
 
 def getRFID():
     linesFromFile = []
-    
+        
     filled = 1
     empty = 0
-    
+        
     with open(mapName) as f:
         for line in f:
             line = line.replace("(", "")
             line = line.replace(")", "")
             line = line.replace("\n", "")
             linesFromFile.append(line)
-        
+            
         matrixCornerFullString = linesFromFile[0]
         matrixCornersArr = matrixCornerFullString.split(' ')
     
     obstacleList = []
-
+        
     x = 2
     while x < len(linesFromFile):
         obstacleStrings = linesFromFile[x].split(' ')
-        
+            
         polygon = []
-        
+            
         for string in obstacleStrings:
             polygon.append(string.split(','))
         obstacleList.append(polygon)
-
+            
         x = x + 1
-
+        
     a = matrixCornersArr[0].split(',')
     b = matrixCornersArr[1].split(',')
     c = matrixCornersArr[2].split(',')
     d = matrixCornersArr[3].split(',')
-
+        
     offset_x = 0 - float(d[0])
     offset_y = 0 - float(b[1])
-
-    for obstacle in obstacleList:
-        for point in obstacle:
-            if point[0]:
-                point[0] = float(point[0]) + offset_x
-                point[1] = float(point[1]) + offset_y
-                
-                point[0] = point[0] * resolution
-                point[1] = point[1] * resolution
+    
+    
+    filename = resolution
+    
+    try:
+        infile = open(str(filename),'rb')
+        rfid = pickle.load(infile)
+        infile.close()
+        return rfid,offset_x,offset_y
+    except Exception as e:
+        print("LOL")
+        for obstacle in obstacleList:
+            for point in obstacle:
+                if point[0]:
+                    point[0] = float(point[0]) + offset_x
+                    point[1] = float(point[1]) + offset_y
                     
-                temp = point[0]
-                point[0] = point[1]
-                point[1] = temp
-
-    start[0] = float(start[0]) + offset_x
-    start[1] = float(start[1]) + offset_y
-    start[0] = start[0] * resolution
-    start[1] = start[1] * resolution
-
-    matrixHeight = abs(float(a[1]) - float(b[1]))
-    matrixWidth = abs(float(a[0]) - float(d[0]))
-
-    matrix = []
-
-    for row in range(0, int(matrixHeight) * resolution):
-        rowArr = []
-        for col in range(0, int(matrixWidth) * resolution):
-            rowArr.append(empty)
-        matrix.append(rowArr)
-
-    for x in range(0, int(matrixHeight) * resolution):
-        print(float(x)/float(matrixHeight)/resolution*100,"%")
-        matrix[x][0] = filled
-        matrix[int(matrixHeight) * resolution - 1][x] = filled
-        matrix[x][int(matrixHeight) * resolution - 1] = filled
-        matrix[0][x] = filled
-            
-        for y in range(0, int(matrixHeight) * resolution):
-            for x in range(0, int(matrixWidth) * resolution):
-                if y + 1 >= matrixHeight * resolution or x + 1 >= matrixWidth * resolution:
-                    continue
-                # topleft
-                
-                for obstacle in obstacleList:
-                    if inside_polygon(x, y, obstacle) or on_polygon(x, y, obstacle):
-                        matrix[x][y] = filled
-            
-                # topright
-                for obstacle in obstacleList:
-                    if inside_polygon(x + 1, y, obstacle) or on_polygon(x + 1, y, obstacle):
-                        matrix[x][y] = filled
-
-                # bottomleft
-                for obstacle in obstacleList:
-                    if inside_polygon(x, y + 1, obstacle) or on_polygon(x, y + 1, obstacle):
-                        matrix[x][y] = filled
+                    point[0] = point[0] * resolution
+                    point[1] = point[1] * resolution
                     
-                # bottomright
-                for obstacle in obstacleList:
-                    if inside_polygon(x + 1, y + 1, obstacle) or on_polygon(x + 1, y + 1, obstacle):
-                        matrix[x][y] = filled
+                    temp = point[0]
+                    point[0] = point[1]
+                    point[1] = temp
 
-    matrix.reverse()
+        start[0] = float(start[0]) + offset_x
+        start[1] = float(start[1]) + offset_y
+        start[0] = start[0] * resolution
+        start[1] = start[1] * resolution
+
+        matrixHeight = abs(float(a[1]) - float(b[1]))
+        matrixWidth = abs(float(a[0]) - float(d[0]))
+
+        matrix = []
+
+        for row in range(0, int(matrixHeight) * resolution):
+            rowArr = []
+            for col in range(0, int(matrixWidth) * resolution):
+                rowArr.append(empty)
+            matrix.append(rowArr)
+
+        for x in range(0, int(matrixHeight) * resolution):
+            print(float(x)/float(matrixHeight)/resolution*100,"%")
+            matrix[x][0] = filled
+            matrix[int(matrixHeight) * resolution - 1][x] = filled
+            matrix[x][int(matrixHeight) * resolution - 1] = filled
+            matrix[0][x] = filled
+            
+            for y in range(0, int(matrixHeight) * resolution):
+                for x in range(0, int(matrixWidth) * resolution):
+                    if y + 1 >= matrixHeight * resolution or x + 1 >= matrixWidth * resolution:
+                        continue
+                    # topleft
+                    
+                    for obstacle in obstacleList:
+                        if inside_polygon(x, y, obstacle) or on_polygon(x, y, obstacle):
+                            matrix[x][y] = filled
+                
+                    # topright
+                    for obstacle in obstacleList:
+                        if inside_polygon(x + 1, y, obstacle) or on_polygon(x + 1, y, obstacle):
+                            matrix[x][y] = filled
+
+                    # bottomleft
+                    for obstacle in obstacleList:
+                        if inside_polygon(x, y + 1, obstacle) or on_polygon(x, y + 1, obstacle):
+                            matrix[x][y] = filled
+                    
+                    # bottomright
+                    for obstacle in obstacleList:
+                        if inside_polygon(x + 1, y + 1, obstacle) or on_polygon(x + 1, y + 1, obstacle):
+                            matrix[x][y] = filled
+
+        matrix.reverse()
+        outfile = open(str(filename),'wb')
+        pickle.dump(matrix,outfile)
+        outfile.close()
     return matrix,offset_x,offset_y
 
 
@@ -413,7 +427,7 @@ class Particle(object):
         ranges = []
         
         #start = math.degrees(head_data*-1) - 30 + 90
-        start = math.degrees(head_data*-1)  + 90 - 30
+        start = math.degrees(head_data)*-1  + 90
         self.h = start
         for head in range(54):
             slope = math.tan(self.h)
@@ -477,13 +491,6 @@ class Robot(Particle):
         self.oldHeading = heading
         self.oldSpeed = self.speed
 
-    def read_sensor(self, maze):
-        """
-        Poor robot, it's sensors are noisy and pretty strange,
-        it only can measure the distance to the nearest beacon(!)
-        and is not very accurate at that too!
-        """
-        return add_little_noise(super(Robot, self).read_sensor(maze))[0]
 
     def move(self, maze):
         """

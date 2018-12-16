@@ -48,6 +48,8 @@ mapName = "map_2.txt"
 offset_x = 0
 offset_y = 0
 
+stepCount = 0
+
 def getNoisyDistances():
     noises = []
     
@@ -357,11 +359,8 @@ class WeightedDistribution(object):
 
 class Particle(object):
     def __init__(self, x, y, heading=None, w=1, noisy=False):
-        if heading is None:
-            heading = random.uniform(0, 360)
-        if noisy:
-            x, y, heading = x,y,math.degrees(headings[0]*-1)+90
-
+        heading = math.degrees(headings[stepCount])*-1+90
+        
         self.x = x
         self.y = y
         self.h = heading
@@ -429,7 +428,7 @@ class Particle(object):
         ranges = []
         
         #start = math.degrees(head_data*-1) - 30 + 90
-        start = math.degrees(head_data)*-1  + 90
+        start = math.degrees(head_data)*-1  + 90 - 30
         self.h = start
         for head in range(54):
             slope = math.tan(self.h)
@@ -498,8 +497,6 @@ class Robot(Particle):
         """
         Move the robot. Note that the movement is stochastic too.
         """
-        self.speed = float(distances[self.distanceCount])*resolution
-        
         self.chose_random_direction()
         self.advance_by(self.speed, noisy=True,
                                checker=lambda r, dx, dy: maze.is_free(r.x + dx, r.y + dy))
@@ -587,7 +584,7 @@ while count < len(headings):
             new_particle = Particle.create_random(1, world)[0]
         else:
             new_particle = Particle(p.x, p.y,
-                                    heading=robbie.h if ROBOT_HAS_COMPASS else p.h,
+                                    heading=robbie.h,
                                     noisy=True)
         new_particles.append(new_particle)
 
@@ -595,7 +592,10 @@ while count < len(headings):
 
     # ---------- Move things ----------
     old_heading = robbie.h
+
     count = robbie.move(world)
+    stepCount = count
+
     d_h = robbie.h - old_heading
     #count += 1
 
@@ -604,6 +604,10 @@ while count < len(headings):
     for p in particles:
         p.h += d_h  # in case robot changed heading, swirl particle heading too
         p.advance_by(robbie.speed)
+
+    if stepCount < len(distances):
+        robbie.speed = float(distances[robbie.distanceCount])*resolution
+
     time.sleep(0.5)
 
 time.sleep(1000)

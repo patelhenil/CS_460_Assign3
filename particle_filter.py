@@ -515,16 +515,17 @@ class Robot(Particle):
             oldRadian = 0
         
         heading = float(headings[self.distanceCount])
+        heading = heading * -1
         print("heading from txt",headings[self.distanceCount])
         heading = math.degrees(heading)
-        heading = heading + 180.0
+        heading = heading + 90
         
         
-        if self.speed == 0:
+        '''if self.speed == 0:
             heading = heading + self.oldHeading
         else:
             heading = self.oldHeading
-            heading = heading + heading - (math.degrees(oldRadian)+180)
+            heading = heading + heading - (math.degrees(oldRadian)+180)'''
         
         
         print("heading calculated",heading)

@@ -19,7 +19,7 @@ import numpy
 from draw import Maze
 
 
-PARTICLE_COUNT = 100    # Total number of particles
+PARTICLE_COUNT = 1000    # Total number of particles
 
 ROBOT_HAS_COMPASS = True  # Does the robot know where north is? If so, it
 # makes orientation a lot easier since it knows which direction it is facing.
@@ -36,11 +36,13 @@ distances = []
 
 start = []
 
-resolution = 4
-headingCount = 0
+resolution = 8
 
 trajectoryName = "trajectories_2.txt"
 mapName = "map_2.txt"
+
+offset_x = 0
+offset_y = 0
 
 def getOrientations():
     orientations = []
@@ -106,7 +108,7 @@ def getDistances():
     with open(trajectoryName) as f:
         for line in f:
             if line[:8] == "Distance":
-                distances.append(line[16:-2])
+                distances.append(line[16:-1])
     return distances
 
 
@@ -236,7 +238,7 @@ def getRFID():
                         matrix[x][y] = filled
 
     matrix.reverse()
-    return matrix
+    return matrix,offset_x,offset_y
 
 
 
@@ -404,7 +406,7 @@ class Particle(object):
         Return array of ranges
         """
         ranges = []
-        start = math.cos(math.radians(head_data)) - 30
+        start = math.degrees(head_data) - 30 + 180
         self.h = start
         for head in range(54):
             slope = math.tan(self.h)
@@ -451,8 +453,15 @@ class Robot(Particle):
     def chose_random_direction(self):
         print(self.distanceCount)
         heading = float(headings[self.distanceCount])
-        heading = math.degrees(heading)
-        print(heading)
+        print("heading from txt",headings[self.distanceCount])
+        heading = heading*180
+        heading = heading/math.pi
+        heading = math.ceil(heading)
+        heading = heading + 180.0
+        print("heading calculated",heading)
+        print("speed",self.speed/resolution)
+        
+        print("coor",self.x/resolution - offset_x,self.y/resolution - offset_y)
         self.h =  heading
 
     def read_sensor(self, maze):
@@ -467,22 +476,24 @@ class Robot(Particle):
         """
         Move the robot. Note that the movement is stochastic too.
         """
-        self.chose_random_direction()
         self.speed = float(distances[self.distanceCount])*resolution
-        while True:
-            if self.advance_by(self.speed, noisy=True,
-                               checker=lambda r, dx, dy: maze.is_free(r.x + dx, r.y + dy)):
-                break
+        
+        self.chose_random_direction()
+        self.advance_by(self.speed, noisy=True,
+                               checker=lambda r, dx, dy: maze.is_free(r.x + dx, r.y + dy))
+ 
+            
         
             # Bumped into something or too long in same direction,
             # chose random new direction
-            '''self.h = self.h + 1
+        '''self.h = self.h + 1
             if math.ceil(self.h) == 360:
                 self.h = 0.0
             print("change angle",self.h)'''
             
 
         self.distanceCount += 1
+        return self.distanceCount
 
 # ------------------------------------------------------------------------
 
@@ -492,7 +503,7 @@ distances = getDistances()
 headings = getHeading()
 print(headings)
 
-maze_data = getRFID()
+maze_data,offset_x,offset_y = getRFID()
 
 
 
@@ -505,6 +516,7 @@ world.draw()
 # initial distribution assigns each particle an equal probability
 particles = Particle.create_random(PARTICLE_COUNT, world)
 robbie = Robot(world)
+
 count = 0
 
 while count < len(headings):
@@ -556,9 +568,9 @@ while count < len(headings):
 
     # ---------- Move things ----------
     old_heading = robbie.h
-    robbie.move(world)
+    count = robbie.move(world)
     d_h = robbie.h - old_heading
-    count += 1
+    #count += 1
 
     # Move particles according to my belief of movement (this may
     # be different than the real movement, but it's all I got)

@@ -20,7 +20,7 @@ import pickle
 from draw import Maze
 
 
-PARTICLE_COUNT = 4000    # Total number of particles
+PARTICLE_COUNT = 1000    # Total number of particles
 
 ROBOT_HAS_COMPASS = False  # Does the robot know where north is? If so, it
 # makes orientation a lot easier since it knows which direction it is facing.
@@ -182,6 +182,11 @@ def getRFID():
     offset_x = 0 - float(d[0])
     offset_y = 0 - float(b[1])
     
+    start[0] = float(start[0]) + offset_x
+    start[1] = float(start[1]) + offset_y
+    start[0] = start[0] * resolution
+    start[1] = start[1] * resolution
+    
     
     filename = resolution
     
@@ -205,10 +210,7 @@ def getRFID():
                     point[0] = point[1]
                     point[1] = temp
 
-        start[0] = float(start[0]) + offset_x
-        start[1] = float(start[1]) + offset_y
-        start[0] = start[0] * resolution
-        start[1] = start[1] * resolution
+
 
         matrixHeight = abs(float(a[1]) - float(b[1]))
         matrixWidth = abs(float(a[0]) - float(d[0]))

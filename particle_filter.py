@@ -39,7 +39,7 @@ noisyDistances = []
 
 start = []
 
-resolution = 4
+resolution = 10
 
 trajectoryName = "trajectories_2.txt"
 mapName = "map_2.txt"
@@ -99,56 +99,6 @@ def getNoisyHeadings():
 
     return noises
 
-def getOrientations():
-    orientations = []
-    
-    lines = []
-    
-    with open(trajectoryName) as f:
-        for line in f:
-            lines.append(line)
-    
-
-    count = 0
-    while count < len(lines):
-        line = lines[count]
-        
-        quar = []
-        
-        if line[:15] == "    orientation":
-            count += 1
-            line = lines[count]
-            
-            quar.append(float(line[9:-2]))
-
-            count += 1
-            line = lines[count]
-            quar.append( float(line[9:-2]))
-     
-            count += 1
-            line = lines[count]
-            quar.append( float(line[9:-2]))
-
-            count += 1
-            line = lines[count]
-            quar.append( float(line[9:-2]))
-            
-            quar.insert(0, quar.pop())
-
-
-        if len(quar) == 4:
-            yaw = numpy.arctan2(quar[1]*quar[2]+quar[0]*quar[3], (1/2)-(quar[2]**2 + quar[3]**2))
-            yaw = yaw * 180 / math.pi
-            
-            if yaw < 0:
-                yaw += 360.0
-            
-            orientations.append(yaw)
-
-        count += 1
-    
-    print(orientations)
-    return orientations
 
 def getHeading():
     headings = []
@@ -261,7 +211,7 @@ def getRFID():
         matrix.append(rowArr)
 
     for x in range(0, int(matrixHeight) * resolution):
-        print(x)
+        print(float(x)/float(matrixHeight)/resolution*100,"%")
         matrix[x][0] = filled
         matrix[int(matrixHeight) * resolution - 1][x] = filled
         matrix[x][int(matrixHeight) * resolution - 1] = filled
@@ -394,7 +344,7 @@ class Particle(object):
         if heading is None:
             heading = random.uniform(0, 360)
         if noisy:
-            x, y, heading = x,y,headings[0]
+            x, y, heading = x,y,math.degrees(headings[0]*-1)+90
 
         self.x = x
         self.y = y
@@ -461,7 +411,9 @@ class Particle(object):
         Return array of ranges
         """
         ranges = []
-        start = math.degrees(head_data) - 30 + 180
+        
+        #start = math.degrees(head_data*-1) - 30 + 90
+        start = math.degrees(head_data*-1)  + 90 - 30
         self.h = start
         for head in range(54):
             slope = math.tan(self.h)
@@ -509,23 +461,12 @@ class Robot(Particle):
     def chose_random_direction(self):
         print(self.distanceCount)
         
-        if self.distanceCount > 0:
-            oldRadian = float(headings[self.distanceCount-1])
-        else:
-            oldRadian = 0
-        
         heading = float(headings[self.distanceCount])
         heading = heading * -1
         print("heading from txt",headings[self.distanceCount])
         heading = math.degrees(heading)
         heading = heading + 90
         
-        
-        '''if self.speed == 0:
-            heading = heading + self.oldHeading
-        else:
-            heading = self.oldHeading
-            heading = heading + heading - (math.degrees(oldRadian)+180)'''
         
         
         print("heading calculated",heading)

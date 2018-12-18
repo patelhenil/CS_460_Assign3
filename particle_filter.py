@@ -274,25 +274,31 @@ sigma2 = 0.95 ** 2
 
 def w_gauss(a, b):
     
+    size = min(len(a), len(b))
+    sum_error = 0
     sum_a = 0
     sum_b = 0
-    
-    for value in a:
-        if value != "nan":
-            sum_a += float(value)
-        else:
-            sum_a += 0
+    g = 0
+    # print(size)
 
-    for value in b:
-        if value != "nan":
-            sum_b += value
+    for count in range(size):
+        if (a[count] == "nan") and (b[count] == "nan"):
+            sum_error = 0
+        elif a[count] == "nan":
+            sum_error = abs(b[count])
+        elif b[count] == "nan":
+            sum_error = abs(float(a[count]))
         else:
-            sum_b += 0
+            sum_error = abs(float(a[count]) - float(b[count]))
+        g += math.e ** -(sum_error ** 2 / (2 * sigma2))
 
-    sum_error = abs(sum_a - sum_b)
-    g = math.e ** -(sum_error ** 2 / (2 * sigma2))
-    print(g)
-    return g
+
+    avg = g / 54
+    if avg <= 1.00e-01:
+        avg = 0.0
+
+    print(avg)
+    return avg
 
 # ------------------------------------------------------------------------
 
@@ -534,6 +540,7 @@ testP = Particle(robbie.x, robbie.y,
 while count < len(headings):
     # Read robbie's sensor
     heading_data = headings[count]
+    robot_range_data = robbie.read_sensor(world, heading_data)
 
     # Update particle weight according to how good every particle matches
     # robbie's sensor reading
@@ -545,7 +552,7 @@ while count < len(headings):
         if world.is_free(*p.xy):
             # print(heading_data)
             point_range = p.read_sensor(world, float(heading_data))
-            p.w = w_gauss(ranges[count], point_range)
+            p.w = w_gauss(robot_range_data, point_range)
             print(kaka,"out of",len(particles),"weight",p.w)
 
         else:

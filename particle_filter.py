@@ -273,26 +273,26 @@ sigma2 = 0.95 ** 2
 
 
 def w_gauss(a, b):
-    size = min(len(a), len(b))
-    sum_error = 0
-    g = 0
-    # print(size)
-
-    for count in range(size):
-        if (a[count] == "nan") and (b[count] == "nan"):
-            sum_error = 0
-        elif a[count] == "nan":
-            sum_error = abs(b[count])
-        elif b[count] == "nan":
-            sum_error = abs(float(a[count]))
+    
+    sum_a = 0
+    sum_b = 0
+    
+    for value in a:
+        if value != "nan":
+            sum_a += float(value)
         else:
-            sum_error = abs(float(a[count]) - float(b[count]))
+            sum_a += 0
 
-        g += math.e ** -(sum_error ** 2 / (2 * sigma2))
-        
-        
-    avg = g / 54
-    return avg
+    for value in b:
+        if value != "nan":
+            sum_b += value
+        else:
+            sum_b += 0
+
+    sum_error = abs(sum_a - sum_b)
+    g = math.e ** -(sum_error ** 2 / (2 * sigma2))
+    print(g)
+    return g
 
 # ------------------------------------------------------------------------
 
@@ -518,7 +518,7 @@ ranges = getRanges()
 # print(ranges)
 
 world = Maze(maze_data)
-world.draw()
+#world.draw()
 
 # initial distribution assigns each particle an equal probability
 particles = Particle.create_random(PARTICLE_COUNT, world)
@@ -537,18 +537,20 @@ while count < len(headings):
 
     # Update particle weight according to how good every particle matches
     # robbie's sensor reading
-    if testP not in particles:
-        particles.append(testP)
-        print("ADD ONCE")
-    
+  
+
+    kaka = 0
     for p in particles:
+        
         if world.is_free(*p.xy):
             # print(heading_data)
             point_range = p.read_sensor(world, float(heading_data))
             p.w = w_gauss(ranges[count], point_range)
+            print(kaka,"out of",len(particles),"weight",p.w)
 
         else:
             p.w = 0
+        kaka += 1
         
 
     # ---------- Try to find current best estimate for display ----------
@@ -569,7 +571,7 @@ while count < len(headings):
             p.w = p.w / nu
             print(p.w)
 
-
+    time.sleep(1000)
 
     # create a weighted distribution, for fast picking
     dist = WeightedDistribution(particles)

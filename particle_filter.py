@@ -265,16 +265,6 @@ def getRFID():
 
 
 
-def add_noise(level, *coords):
-    return [x + random.uniform(-level, level) for x in coords]
-
-
-def add_little_noise(*coords):
-    return add_noise(0.02, *coords)
-
-
-def add_some_noise(*coords):
-    return add_noise(0.1, *coords)
 
 
 # This is just a gaussian kernel I pulled out of my hat, to transform
@@ -428,7 +418,7 @@ class Particle(object):
         ranges = []
         
         #start = math.degrees(head_data*-1) - 30 + 90
-        start = math.degrees(head_data)*-1  + 90 - 30
+        start = math.degrees(head_data)*-1  + 90
         self.h = start
         for head in range(54):
             slope = math.tan(self.h)
@@ -477,16 +467,9 @@ class Robot(Particle):
         print(self.distanceCount)
         
         heading = float(headings[self.distanceCount])
-        heading = heading * -1
-        print("heading from txt",headings[self.distanceCount])
         heading = math.degrees(heading)
+        heading = heading * -1
         heading = heading + 90
-        
-        
-        
-        print("heading calculated",heading)
-        print("speed",self.speed/resolution)
-        
         
         self.h =  heading
         self.oldHeading = heading
@@ -543,17 +526,27 @@ robbie = Robot(world)
 
 count = 0
 
+
+testP = Particle(robbie.x, robbie.y,
+                 heading=robbie.h,
+                 noisy=True)
+
 while count < len(headings):
     # Read robbie's sensor
     heading_data = headings[count]
 
     # Update particle weight according to how good every particle matches
     # robbie's sensor reading
+    if testP not in particles:
+        particles.append(testP)
+        print("ADD ONCE")
+    
     for p in particles:
         if world.is_free(*p.xy):
             # print(heading_data)
             point_range = p.read_sensor(world, float(heading_data))
             p.w = w_gauss(ranges[count], point_range)
+
         else:
             p.w = 0
         
@@ -574,6 +567,9 @@ while count < len(headings):
     if nu:
         for p in particles:
             p.w = p.w / nu
+            print(p.w)
+
+
 
     # create a weighted distribution, for fast picking
     dist = WeightedDistribution(particles)
@@ -581,11 +577,20 @@ while count < len(headings):
     for _ in particles:
         p = dist.pick()
         if p is None:  # No pick b/c all totally improbable
+            if p == testP:
+                print("!!!!!!!!!!!!!!!!!!!")
             new_particle = Particle.create_random(1, world)[0]
         else:
+            change = False
+            if p.x == testP.x and p.y == testP.y and p.h == testP.h and p.w == testP.w:
+                print("p == testP")
+                change = True
             new_particle = Particle(p.x, p.y,
                                     heading=robbie.h,
                                     noisy=True)
+            if change == True:
+                testP = new_particle
+
         new_particles.append(new_particle)
 
     particles = new_particles
@@ -596,7 +601,11 @@ while count < len(headings):
     count = robbie.move(world)
     stepCount = count
 
+
+
+
     d_h = robbie.h - old_heading
+
     #count += 1
 
     # Move particles according to my belief of movement (this may
@@ -605,10 +614,14 @@ while count < len(headings):
         p.h += d_h  # in case robot changed heading, swirl particle heading too
         p.advance_by(robbie.speed)
 
+    print("robbie","x",robbie.x,"y",robbie.y)
+    print("testP","x",testP.x,"y",testP.y)
+
+
     if stepCount < len(distances):
         robbie.speed = float(distances[robbie.distanceCount])*resolution
 
-    time.sleep(0.5)
+    time.sleep(1.5)
 
 time.sleep(1000)
 

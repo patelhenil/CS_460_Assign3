@@ -20,7 +20,7 @@ import pickle
 from draw import Maze
 
 
-PARTICLE_COUNT = 1000    # Total number of particles
+PARTICLE_COUNT = 100    # Total number of particles
 
 ROBOT_HAS_COMPASS = False  # Does the robot know where north is? If so, it
 # makes orientation a lot easier since it knows which direction it is facing.
@@ -269,7 +269,7 @@ def getRFID():
 
 # This is just a gaussian kernel I pulled out of my hat, to transform
 # values near to robbie's measurement => 1, further away => 0
-sigma2 = 500
+sigma2 = 1000
 
 
 
@@ -286,15 +286,20 @@ def w_gauss(a, b):
         if (a[count] == "nan") and (b[count] == "nan"):
             sum_error = 0
         elif a[count] == "nan":
-            sum_error = abs(b[count])
+            sum_error =  -(b[count])
         elif b[count] == "nan":
-            sum_error = abs(float(a[count]))
+            sum_error = abs(float(a[count])*resolution)
         else:
-            sum_error = abs(float(a[count]) - float(b[count]))
+            sum_error = (float(a[count])*resolution - float(b[count]))
+
         g += math.e ** -(sum_error ** 2 / (2 * sigma2))
 
 
-    avg = g / 54
+    avg = g / size
+    if avg <= 1.00e-01:
+        avg = 0.0
+
+    print(avg)
 
     return avg
 
@@ -583,19 +588,13 @@ while count < len(headings):
     for _ in particles:
         p = dist.pick()
         if p is None:  # No pick b/c all totally improbable
-            if p == testP:
-                print("!!!!!!!!!!!!!!!!!!!")
             new_particle = Particle.create_random(1, world)[0]
+            new_particle.w = 0.01
         else:
-            change = False
-            if p.x == testP.x and p.y == testP.y and p.h == testP.h and p.w == testP.w:
-                print("p == testP")
-                change = True
             new_particle = Particle(p.x, p.y,
                                     heading=robbie.h,
                                     noisy=True)
-            if change == True:
-                testP = new_particle
+            new_particle.w = p.w
 
         new_particles.append(new_particle)
 

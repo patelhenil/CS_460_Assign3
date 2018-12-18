@@ -20,7 +20,18 @@ import pickle
 from draw import Maze
 
 
-PARTICLE_COUNT = 100    # Total number of particles
+PARTICLE_COUNT = 1000    # Total number of particles
+scanNoise = 0
+rotationNoise = 0
+translationNoise = 0
+
+
+
+
+
+
+
+
 
 ROBOT_HAS_COMPASS = False  # Does the robot know where north is? If so, it
 # makes orientation a lot easier since it knows which direction it is facing.
@@ -292,7 +303,7 @@ def w_gauss(a, b):
         else:
             sum_error = (float(a[count])*resolution - float(b[count]))
 
-        g += math.e ** -(sum_error ** 2 / (2 * sigma2))
+        g += math.e ** -(sum_error ** 2 / (2 * sigma2)) + random.uniform(-scanNoise,scanNoise)
 
 
     avg = g / size
@@ -483,7 +494,9 @@ class Robot(Particle):
         heading = heading * -1
         heading = heading + 90
         
-        self.h =  heading
+        noise = math.degrees(rotationNoise) * -1 + 90
+        
+        self.h =  heading + random.uniform(-noise,noise)
         self.oldHeading = heading
         self.oldSpeed = self.speed
 
@@ -493,7 +506,7 @@ class Robot(Particle):
         Move the robot. Note that the movement is stochastic too.
         """
         self.chose_random_direction()
-        self.advance_by(self.speed, noisy=True,
+        self.advance_by(self.speed + random.uniform(-translationNoise*resolution,translationNoise*resolution), noisy=True,
                                checker=lambda r, dx, dy: maze.is_free(r.x + dx, r.y + dy))
  
             

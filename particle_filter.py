@@ -269,7 +269,8 @@ def getRFID():
 
 # This is just a gaussian kernel I pulled out of my hat, to transform
 # values near to robbie's measurement => 1, further away => 0
-sigma2 = 0.95 ** 2
+#sigma2 = 0.90 ** 2
+sigma2 = 500
 
 
 def w_gauss(a, b):
@@ -297,7 +298,6 @@ def w_gauss(a, b):
     if avg <= 1.00e-01:
         avg = 0.0
 
-    print(avg)
     return avg
 
 # ------------------------------------------------------------------------
@@ -423,8 +423,10 @@ class Particle(object):
         """
         ranges = []
         
+        oldValue = self.h
+        
         #start = math.degrees(head_data*-1) - 30 + 90
-        start = math.degrees(head_data)*-1  + 90
+        start = math.degrees(head_data)*-1  + 90 - 30
         self.h = start
         for head in range(54):
             slope = math.tan(self.h)
@@ -437,6 +439,7 @@ class Particle(object):
                 ranges.append("nan")
 
             self.h += 1.125
+        self.h = oldValue
 
         return ranges
 
@@ -524,7 +527,7 @@ ranges = getRanges()
 # print(ranges)
 
 world = Maze(maze_data)
-#world.draw()
+world.draw()
 
 # initial distribution assigns each particle an equal probability
 particles = Particle.create_random(PARTICLE_COUNT, world)
@@ -553,8 +556,6 @@ while count < len(headings):
             # print(heading_data)
             point_range = p.read_sensor(world, float(heading_data))
             p.w = w_gauss(robot_range_data, point_range)
-            print(kaka,"out of",len(particles),"weight",p.w)
-
         else:
             p.w = 0
         kaka += 1
@@ -576,9 +577,7 @@ while count < len(headings):
     if nu:
         for p in particles:
             p.w = p.w / nu
-            print(p.w)
 
-    time.sleep(1000)
 
     # create a weighted distribution, for fast picking
     dist = WeightedDistribution(particles)
@@ -631,6 +630,7 @@ while count < len(headings):
         robbie.speed = float(distances[robbie.distanceCount])*resolution
 
     time.sleep(1.5)
+
 
 time.sleep(1000)
 

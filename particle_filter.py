@@ -269,7 +269,7 @@ def getRFID():
 
 # This is just a gaussian kernel I pulled out of my hat, to transform
 # values near to robbie's measurement => 1, further away => 0
-sigma2 = 0.90 ** 2
+sigma2 = 500
 
 
 
@@ -295,8 +295,6 @@ def w_gauss(a, b):
 
 
     avg = g / 54
-    if avg <= 1.00e-01:
-        avg = 0.0
 
     return avg
 
@@ -555,7 +553,7 @@ while count < len(headings):
         if world.is_free(*p.xy):
             # print(heading_data)
             point_range = p.read_sensor(world, float(heading_data))
-            p.w = w_gauss(point_range, point_range)
+            p.w = w_gauss(ranges[count], point_range)
         else:
             p.w = 0
         kaka += 1

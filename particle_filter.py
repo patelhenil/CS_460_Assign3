@@ -43,10 +43,10 @@ noisyDistances = []
 
 start = []
 
-resolution = 12
+resolution = 8
 
-trajectoryName = "trajectories_4.txt"
-mapName = "map_4.txt"
+trajectoryName = "trajectories_5.txt"
+mapName = "map_5.txt"
 
 offset_x = 0
 offset_y = 0
@@ -634,7 +634,7 @@ while count < len(headings):
     if stepCount < len(distances):
         robbie.speed = float(distances[robbie.distanceCount])*resolution
 
-    time.sleep(0.5)
+    time.sleep(0)
 
 
 time.sleep(1000)

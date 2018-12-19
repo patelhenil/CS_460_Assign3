@@ -20,8 +20,10 @@ import pickle
 from draw import Maze
 
 
-PARTICLE_COUNT = 1000    # Total number of particles
-
+PARTICLE_COUNT = 100    # Total number of particles
+scanNoise = 0
+rotationNoise = 0
+translationNoise = 0
 
 
 
@@ -55,9 +57,9 @@ stepCount = 0
 
 def getNoisyDistances():
     noises = []
-    
+
     lines = []
-    
+
     with open(trajectoryName) as f:
         for line in f:
             lines.append(line)
@@ -66,24 +68,24 @@ def getNoisyDistances():
     count = 0
     while count < len(lines):
         line = lines[count]
-        
+
         quar = []
-        
+
         if line[:14] == "noisy_distance":
             count += 1
             line = lines[count]
-            
+
             noises.append(float(line[8:-2]))
-        
+
         count += 1
 
     return noises
 
 def getNoisyHeadings():
     noises = []
-    
+
     lines = []
-    
+
     with open(trajectoryName) as f:
         for line in f:
             lines.append(line)
@@ -92,15 +94,15 @@ def getNoisyHeadings():
     count = 0
     while count < len(lines):
         line = lines[count]
-        
+
         quar = []
-        
+
         if line[:13] == "noisy_heading":
             count += 1
             line = lines[count]
-            
+
             noises.append(float(line[8:-2]))
-        
+
         count += 1
 
     return noises
@@ -137,7 +139,7 @@ def getStart():
 def getRanges():
     ranges = []
     rangesStrArr = []
-    
+
     with open(trajectoryName) as f:
         for line in f:
             if line[:8] == "  ranges":
@@ -145,56 +147,56 @@ def getRanges():
 
     for range in rangesStrArr:
         ranges.append(range.split(", "))
-    
+
     return ranges
 
 
 def getRFID():
     linesFromFile = []
-        
+
     filled = 1
     empty = 0
-        
+
     with open(mapName) as f:
         for line in f:
             line = line.replace("(", "")
             line = line.replace(")", "")
             line = line.replace("\n", "")
             linesFromFile.append(line)
-            
+
         matrixCornerFullString = linesFromFile[0]
         matrixCornersArr = matrixCornerFullString.split(' ')
-    
+
     obstacleList = []
-        
+
     x = 2
     while x < len(linesFromFile):
         obstacleStrings = linesFromFile[x].split(' ')
-            
+
         polygon = []
-            
+
         for string in obstacleStrings:
             polygon.append(string.split(','))
         obstacleList.append(polygon)
-            
+
         x = x + 1
-        
+
     a = matrixCornersArr[0].split(',')
     b = matrixCornersArr[1].split(',')
     c = matrixCornersArr[2].split(',')
     d = matrixCornersArr[3].split(',')
-        
+
     offset_x = 0 - float(d[0])
     offset_y = 0 - float(b[1])
-    
+
     start[0] = float(start[0]) + offset_x
     start[1] = float(start[1]) + offset_y
     start[0] = start[0] * resolution
     start[1] = start[1] * resolution
-    
-    
+
+
     filename = str(resolution) + mapName
-    
+
     try:
         infile = open(str(filename),'rb')
         rfid = pickle.load(infile)
@@ -207,10 +209,10 @@ def getRFID():
                 if point[0]:
                     point[0] = float(point[0]) + offset_x
                     point[1] = float(point[1]) + offset_y
-                    
+
                     point[0] = point[0] * resolution
                     point[1] = point[1] * resolution
-                    
+
                     temp = point[0]
                     point[0] = point[1]
                     point[1] = temp
@@ -234,17 +236,17 @@ def getRFID():
             matrix[int(matrixHeight) * resolution - 1][x] = filled
             matrix[x][int(matrixHeight) * resolution - 1] = filled
             matrix[0][x] = filled
-            
+
             for y in range(0, int(matrixHeight) * resolution):
                 for x in range(0, int(matrixWidth) * resolution):
                     if y + 1 >= matrixHeight * resolution or x + 1 >= matrixWidth * resolution:
                         continue
                     # topleft
-                    
+
                     for obstacle in obstacleList:
                         if inside_polygon(x, y, obstacle) or on_polygon(x, y, obstacle):
                             matrix[x][y] = filled
-                
+
                     # topright
                     for obstacle in obstacleList:
                         if inside_polygon(x + 1, y, obstacle) or on_polygon(x + 1, y, obstacle):
@@ -254,7 +256,7 @@ def getRFID():
                     for obstacle in obstacleList:
                         if inside_polygon(x, y + 1, obstacle) or on_polygon(x, y + 1, obstacle):
                             matrix[x][y] = filled
-                    
+
                     # bottomright
                     for obstacle in obstacleList:
                         if inside_polygon(x + 1, y + 1, obstacle) or on_polygon(x + 1, y + 1, obstacle):
@@ -278,12 +280,12 @@ def getRFID():
 
 def w_gauss(a, b):
     sigma2 = 1000
-    
+
     if mapName == "map_2.txt":
         sigma2 = 1000
     if mapName == "map_3.txt":
         sigma2 = 500
-    
+
     size = min(len(a), len(b))
     sum_error = 0
     sum_a = 0
@@ -301,7 +303,7 @@ def w_gauss(a, b):
         else:
             sum_error = (float(a[count])*resolution - float(b[count]))
 
-        g += math.e ** -(sum_error ** 2 / (2 * sigma2))
+        g += math.e ** -(sum_error ** 2 / (2 * sigma2)) + random.uniform(-scanNoise,scanNoise)
 
 
     avg = g / size
@@ -366,7 +368,7 @@ class WeightedDistribution(object):
 class Particle(object):
     def __init__(self, x, y, heading=None, w=1, noisy=False):
         heading = math.degrees(headings[stepCount])*-1+90
-        
+
         self.x = x
         self.y = y
         self.h = heading
@@ -432,9 +434,9 @@ class Particle(object):
         Return array of ranges
         """
         ranges = []
-        
+
         oldValue = self.h
-        
+
         #start = math.degrees(head_data*-1) - 30 + 90
         start = math.degrees(head_data)*-1  + 90 - 30
         self.h = start
@@ -456,7 +458,7 @@ class Particle(object):
     def advance_by(self, speed, checker=None, noisy=False):
         h = self.h
 
-    
+
         r = math.radians(h)
         dx = math.sin(r) * speed
         dy = math.cos(r) * speed
@@ -477,22 +479,29 @@ class Robot(Particle):
     oldSpeed = 0
     distanceCount = 0
     oldHeading = 0
-    
- 
+
+
     def __init__(self, maze):
         super(Robot, self).__init__(*start, heading=0)
 
     def chose_random_direction(self):
         print(self.distanceCount)
-        
+
         heading = float(headings[self.distanceCount])
         heading = math.degrees(heading)
         heading = heading * -1
         heading = heading + 90
-        
+
         self.h =  heading
         self.oldHeading = heading
         self.oldSpeed = self.speed
+
+        noise = math.degrees(rotationNoise)
+
+        if rotationNoise > 0:
+            self.h =  heading + random.uniform(-noise,noise)
+        else:
+            self.h =  heading
 
 
     def move(self, maze):
@@ -500,28 +509,28 @@ class Robot(Particle):
         Move the robot. Note that the movement is stochastic too.
         """
         self.chose_random_direction()
-        
+
         if mapName == "map_3.txt" and self.distanceCount == 8:
             self.speed = self.speed + 0.3*resolution
-        
-        self.advance_by(self.speed, noisy=True,
+
+        self.advance_by(self.speed + random.uniform(-translationNoise*resolution,translationNoise*resolution), noisy=True,
                                checker=lambda r, dx, dy: maze.is_free(r.x + dx, r.y + dy))
- 
-            
-        
+
+
+
             # Bumped into something or too long in same direction,
             # chose random new direction
         '''self.h = self.h + 1
             if math.ceil(self.h) == 360:
                 self.h = 0.0
             print("change angle",self.h)'''
-            
+
 
         self.distanceCount += 1
-        
+
         print("coor",self.x/resolution - offset_x,self.y/resolution - offset_y)
         print(self.speed)
-        
+
         return self.distanceCount
 
 # ------------------------------------------------------------------------
@@ -549,10 +558,10 @@ robbie = Robot(world)
 
 count = 0
 
-
-testP = Particle(robbie.x, robbie.y,
+maxParticle = Particle(-100, -100,
                  heading=robbie.h,
                  noisy=True)
+
 
 while count < len(headings):
     # Read robbie's sensor
@@ -561,11 +570,11 @@ while count < len(headings):
 
     # Update particle weight according to how good every particle matches
     # robbie's sensor reading
-  
+
 
     kaka = 0
     for p in particles:
-        
+
         if world.is_free(*p.xy):
             # print(heading_data)
             point_range = p.read_sensor(world, float(heading_data))
@@ -573,7 +582,7 @@ while count < len(headings):
         else:
             p.w = 0
         kaka += 1
-        
+
 
     # ---------- Try to find current best estimate for display ----------
     m_x, m_y, m_confident = compute_mean_point(particles)
@@ -620,7 +629,7 @@ while count < len(headings):
 
 
 
-    d_h = robbie.h - old_heading
+    d_h = headings[robbie.distanceCount-1]
 
     #count += 1
 
@@ -636,6 +645,10 @@ while count < len(headings):
 
     time.sleep(0)
 
+for p in particles:
+    if math.sqrt(abs(p.x - robbie.x)**2 + abs(p.y - robbie.y)**2) < math.sqrt(abs(maxParticle.x - robbie.x)**2 + abs(maxParticle.y - robbie.y)**2):
+        maxParticle = p
+
+print(100 - math.sqrt(abs(maxParticle.x - robbie.x)**2 + abs(maxParticle.y - robbie.y)**2))
 
 time.sleep(1000)
-

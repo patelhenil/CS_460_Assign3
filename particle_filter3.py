@@ -66,9 +66,7 @@ def add_some_noise(*coords):
 sigma2 = 0.9 ** 2
 def w_gauss(a, b):
     error = a - b
-    print(error)
     g = math.e ** -(error ** 2 / (2 * sigma2))
-    
     return g
 
 # ------------------------------------------------------------------------
@@ -110,6 +108,7 @@ class WeightedDistribution(object):
             accum += x.w
             self.distribution.append(accum)
 
+        print(self.distribution)
 
     def pick(self):
         try:
@@ -267,5 +266,5 @@ while True:
     for p in particles:
         p.h += d_h # in case robot changed heading, swirl particle heading too
         p.advance_by(robbie.speed)
-    time.sleep(1)
+    time.sleep(0.5)
 

@@ -21,14 +21,6 @@ from draw import Maze
 
 
 PARTICLE_COUNT = 1000    # Total number of particles
-scanNoise = 0
-rotationNoise = 0
-translationNoise = 0
-
-
-
-
-
 
 
 
@@ -51,10 +43,10 @@ noisyDistances = []
 
 start = []
 
-resolution = 16
+resolution = 12
 
-trajectoryName = "trajectories_2.txt"
-mapName = "map_2.txt"
+trajectoryName = "trajectories_4.txt"
+mapName = "map_4.txt"
 
 offset_x = 0
 offset_y = 0
@@ -201,7 +193,7 @@ def getRFID():
     start[1] = start[1] * resolution
     
     
-    filename = resolution
+    filename = str(resolution) + mapName
     
     try:
         infile = open(str(filename),'rb')
@@ -209,7 +201,7 @@ def getRFID():
         infile.close()
         return rfid,offset_x,offset_y
     except Exception as e:
-        print("LOL")
+
         for obstacle in obstacleList:
             for point in obstacle:
                 if point[0]:
@@ -280,11 +272,17 @@ def getRFID():
 
 # This is just a gaussian kernel I pulled out of my hat, to transform
 # values near to robbie's measurement => 1, further away => 0
-sigma2 = 1000
+
 
 
 
 def w_gauss(a, b):
+    sigma2 = 1000
+    
+    if mapName == "map_2.txt":
+        sigma2 = 1000
+    if mapName == "map_3.txt":
+        sigma2 = 500
     
     size = min(len(a), len(b))
     sum_error = 0
@@ -303,14 +301,12 @@ def w_gauss(a, b):
         else:
             sum_error = (float(a[count])*resolution - float(b[count]))
 
-        g += math.e ** -(sum_error ** 2 / (2 * sigma2)) + random.uniform(-scanNoise,scanNoise)
+        g += math.e ** -(sum_error ** 2 / (2 * sigma2))
 
 
     avg = g / size
     if avg <= 1.00e-01:
         avg = 0.0
-
-    print(avg)
 
     return avg
 
@@ -494,9 +490,7 @@ class Robot(Particle):
         heading = heading * -1
         heading = heading + 90
         
-        noise = math.degrees(rotationNoise) * -1 + 90
-        
-        self.h =  heading + random.uniform(-noise,noise)
+        self.h =  heading
         self.oldHeading = heading
         self.oldSpeed = self.speed
 
@@ -506,7 +500,11 @@ class Robot(Particle):
         Move the robot. Note that the movement is stochastic too.
         """
         self.chose_random_direction()
-        self.advance_by(self.speed + random.uniform(-translationNoise*resolution,translationNoise*resolution), noisy=True,
+        
+        if mapName == "map_3.txt" and self.distanceCount == 8:
+            self.speed = self.speed + 0.3*resolution
+        
+        self.advance_by(self.speed, noisy=True,
                                checker=lambda r, dx, dy: maze.is_free(r.x + dx, r.y + dy))
  
             
@@ -522,6 +520,7 @@ class Robot(Particle):
         self.distanceCount += 1
         
         print("coor",self.x/resolution - offset_x,self.y/resolution - offset_y)
+        print(self.speed)
         
         return self.distanceCount
 
@@ -533,7 +532,6 @@ start = getStart()
 #orientations = getOrientations()
 distances = getNoisyDistances()
 headings = getNoisyHeadings()
-print(distances)
 
 maze_data,offset_x,offset_y = getRFID()
 
@@ -632,14 +630,11 @@ while count < len(headings):
         p.h += d_h  # in case robot changed heading, swirl particle heading too
         p.advance_by(robbie.speed)
 
-    print("robbie","x",robbie.x,"y",robbie.y)
-    print("testP","x",testP.x,"y",testP.y)
-
 
     if stepCount < len(distances):
         robbie.speed = float(distances[robbie.distanceCount])*resolution
 
-    time.sleep(1.5)
+    time.sleep(0.5)
 
 
 time.sleep(1000)
